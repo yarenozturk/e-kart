@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polygon Editörü</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 25px;
+      background: #eeeeee;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .toolbar {
+      max-width: 1200px;
+      margin: 0 auto 20px;
+      padding: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      background: white;
+      border-radius: 12px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #222;
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.85;
+    }
+
+    .danger {
+      background: #b42318;
+    }
+
+    .editor-layout {
+      max-width: 1200px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: minmax(400px, 1fr) 380px;
+      gap: 20px;
+    }
+
+    .image-panel,
+    .code-panel {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      min-height: 500px;
+      overflow: hidden;
+      border: 2px dashed #999;
+      border-radius: 10px;
+      background: #fafafa;
+      user-select: none;
+    }
+
+    #editorImage {
+      display: none;
+      width: 100%;
+      height: auto;
+      pointer-events: none;
+    }
+
+    #svgOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    #polygonShape {
+      fill: rgba(0, 120, 255, 0.18);
+      stroke: #0078ff;
+      stroke-width: 2;
+    }
+
+    .point {
+      fill: white;
+      stroke: #e00000;
+      stroke-width: 3;
+      cursor: grab;
+    }
+
+    .point:active {
+      cursor: grabbing;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 360px;
+      padding: 15px;
+      resize: vertical;
+      border: 1px solid #bbb;
+      border-radius: 10px;
+      font-family: Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .info {
+      color: #555;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>CSS Polygon Editörü</h1>
+
+  <div class="toolbar">
+    <input type="file" id="imageInput" accept="image/*" />
+
+    <button id="undoButton">Son Noktayı Sil</button>
+
+    <button id="clearButton" class="danger">
+      Tüm Noktaları Temizle
+    </button>
+
+    <button id="copyButton">
+      CSS Kodunu Kopyala
+    </button>
+  </div>
+
+  <div class="editor-layout">
+
+    <section class="image-panel">
+      <p class="info">
+        Görseli yükledikten sonra dış hat boyunca sırayla tıkla.
+        Oluşan kırmızı noktaları fareyle sürükleyebilirsin.
+      </p>
+
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <img id="editorImage" alt="Düzenlenecek görsel" />
+
+        <svg id="svgOverlay">
+          <polygon id="polygonShape"></polygon>
+          <g id="pointsGroup"></g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="code-panel">
+      <h2>Oluşan CSS Kodu</h2>
+
+      <textarea id="cssOutput" readonly>
+shape-outside: polygon();
+      </textarea>
+    </section>
+
+  </div>
+
+  <script>
+    const imageInput = document.getElementById("imageInput");
+    const editorImage = document.getElementById("editorImage");
+    const canvasWrapper = document.getElementById("canvasWrapper");
+    const svgOverlay = document.getElementById("svgOverlay");
+    const polygonShape = document.getElementById("polygonShape");
+    const pointsGroup = document.getElementById("pointsGroup");
+    const cssOutput = document.getElementById("cssOutput");
+
+    const undoButton = document.getElementById("undoButton");
+    const clearButton = document.getElementById("clearButton");
+    const copyButton = document.getElementById("copyButton");
+
+    let points = [];
+    let draggedPointIndex = null;
+    let imageLoaded = false;
+
+    imageInput.addEventListener("change", function (event) {
+      const file = event.target.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function (readerEvent) {
+        editorImage.src = readerEvent.target.result;
+
+        editorImage.onload = function () {
+          editorImage.style.display = "block";
+          imageLoaded = true;
+          points = [];
+
+          requestAnimationFrame(() => {
+            resizeEditor();
+            render();
+          });
+        };
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    function resizeEditor() {
+      if (!imageLoaded) {
+        return;
+      }
+
+      const imageHeight = editorImage.offsetHeight;
+
+      canvasWrapper.style.minHeight = "0";
+      canvasWrapper.style.height = imageHeight + "px";
+
+      svgOverlay.setAttribute(
+        "viewBox",
+        `0 0 ${canvasWrapper.clientWidth} ${imageHeight}`
+      );
+    }
+
+    canvasWrapper.addEventListener("click", function (event) {
+      if (!imageLoaded || draggedPointIndex !== null) {
+        return;
+      }
+
+      if (event.target.classList.contains("point")) {
+        return;
+      }
+
+      const position = getMousePosition(event);
+
+      points.push(position);
+      render();
+    });
+
+    function getMousePosition(event) {
+      const rect = canvasWrapper.getBoundingClientRect();
+
+      return {
+        x: Math.max(0, Math.min(event.clientX - rect.left, rect.width)),
+        y: Math.max(0, Math.min(event.clientY - rect.top, rect.height))
+      };
+    }
+
+    function render() {
+      const svgPoints = points
+        .map(point => `${point.x},${point.y}`)
+        .join(" ");
+
+      polygonShape.setAttribute("points", svgPoints);
+
+      pointsGroup.innerHTML = "";
+
+      points.forEach((point, index) => {
+        const circle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle"
+        );
+
+        circle.setAttribute("cx", point.x);
+        circle.setAttribute("cy", point.y);
+        circle.setAttribute("r", 7);
+        circle.setAttribute("class", "point");
+        circle.dataset.index = index;
+
+        circle.addEventListener("mousedown", startDragging);
+
+        pointsGroup.appendChild(circle);
+      });
+
+      updateCSS();
+    }
+
+    function startDragging(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      draggedPointIndex = Number(event.target.dataset.index);
+
+      window.addEventListener("mousemove", dragPoint);
+      window.addEventListener("mouseup", stopDragging);
+    }
+
+    function dragPoint(event) {
+      if (draggedPointIndex === null) {
+        return;
+      }
+
+      points[draggedPointIndex] = getMousePosition(event);
+      render();
+    }
+
+    function stopDragging() {
+      draggedPointIndex = null;
+
+      window.removeEventListener("mousemove", dragPoint);
+      window.removeEventListener("mouseup", stopDragging);
+    }
+
+    function updateCSS() {
+      const width = canvasWrapper.clientWidth;
+      const height = canvasWrapper.clientHeight;
+
+      if (!width || !height || points.length === 0) {
+        cssOutput.value = "shape-outside: polygon();";
+        return;
+      }
+
+      const polygonLines = points.map(point => {
+        const xPercent = ((point.x / width) * 100).toFixed(1);
+        const yPercent = ((point.y / height) * 100).toFixed(1);
+
+        return `  ${xPercent}% ${yPercent}%`;
+      });
+
+      cssOutput.value =
+`shape-outside: polygon(
+${polygonLines.join(",\n")}
+);`;
+    }
+
+    undoButton.addEventListener("click", function () {
+      points.pop();
+      render();
+    });
+
+    clearButton.addEventListener("click", function () {
+      points = [];
+      render();
+    });
+
+    copyButton.addEventListener("click", async function () {
+      try {
+        await navigator.clipboard.writeText(cssOutput.value);
+        copyButton.textContent = "Kopyalandı";
+
+        setTimeout(() => {
+          copyButton.textContent = "CSS Kodunu Kopyala";
+        }, 1500);
+      } catch (error) {
+        cssOutput.select();
+        document.execCommand("copy");
+      }
+    });
+
+    window.addEventListener("resize", function () {
+      if (!imageLoaded) {
+        return;
+      }
+
+      resizeEditor();
+      render();
+    });
+  </script>
+
+</body>
+</html>
