@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>E-Kart</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 40px;
+
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+
+      background: #eeeeee;
+      font-family: Arial, sans-serif;
+    }
+
+    .ecard {
+      width: 750px;
+      min-height: 500px;
+      padding: 35px;
+
+      background: white;
+      border-radius: 20px;
+
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+      overflow: auto;
+    }
+
+    .ecard-shape {
+      /*
+        Görselin genişliği.
+        Büyütmek için 320px veya 350px yapabilirsin.
+      */
+      width: 300px;
+      height: auto;
+
+      /*
+        Görsel sağ tarafta kalır.
+      */
+      float: right;
+      display: block;
+
+      /*
+        Yazı ile görsel arasında boşluk bırakır.
+        Negatif olmamalıdır.
+      */
+      margin-left: 20px;
+      margin-right: 0;
+      margin-bottom: 15px;
+
+      /*
+        PNG görselin şeffaf olmayan bölümlerini
+        metin için sınır olarak kullanır.
+      */
+      shape-outside: polygon(  
+        6.7% 22.2%,
+  5.7% 48.9%,
+  5.8% 64.9%,
+  17.3% 71.9%,
+  22.5% 82.1%,
+  29.2% 90.6%,
+  27.4% 94.2%,
+  85.6% 93.4%,
+  96.4% 67.0%,
+  69.0% 33.9%,
+  61.0% 7.5%,
+  28.3% 7.1%,
+  12.4% 7.5%);
+
+      /*
+        Şeffaflık algılama seviyesi.
+      */
+      shape-image-threshold: 0.1;
+
+      /*
+        Yazı ile görselin dış hattı arasındaki boşluk.
+      */
+      shape-margin: 15px;
+    }
+
+    .ecard p {
+      margin: 0;
+
+      font-size: 22px;
+      line-height: 1.7;
+      color: black;
+
+      text-align: justify;
+    }
+
+    .ecard::after {
+      content: "";
+      display: block;
+      clear: both;
+    }
+
+    @media (max-width: 800px) {
+      body {
+        padding: 20px;
+      }
+
+      .ecard {
+        width: 100%;
+        padding: 25px;
+      }
+
+      .ecard-shape {
+        width: 230px;
+        margin-left: 15px;
+        shape-margin: 10px;
+      }
+
+      .ecard p {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="ecard">
+
+    <img
+      class="ecard-shape"
+      src="benim_görselim.png"
+      alt="Fil görseli"
+    />
+
+    <p>
+      Bu özel günde sana mutluluk, sağlık ve huzur diliyorum.
+      Hayatıma kattığın tüm güzellikler için teşekkür ederim.
+      Seninle geçirdiğim her an benim için çok değerli.
+      Birlikte daha nice güzel günler ve güzel anılar biriktirmek dileğiyle.
+      Gülümsemenin hiç eksik olmadığı, hayallerinin gerçekleştiği
+      çok güzel bir yıl olsun. Bu yazı görselin üzerine gelmeden,
+      görselin dış hatlarının çevresinden akarak yerleşmektedir.
+      Metin uzadıkça görselin altından devam eder.
+    </p>
+
+  </div>
+
+</body>
+</html>
